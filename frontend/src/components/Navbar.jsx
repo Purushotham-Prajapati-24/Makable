@@ -6,7 +6,7 @@ const Navbar = () => {
     <div className='text-white flex items-center justify-around gap-12 px-7 py-9 h-16  w-full relative '>
       <div className='flex items-center gap-2'>
         <img src={star} alt="star icon" className='h-8 w-8' />
-        <h1 className='text-3xl cursor-default font-bold'>Makeable</h1>
+        <h1 className='text-3xl cursor-default font-bold'>Makeable.Ai</h1>
       </div>
       
       

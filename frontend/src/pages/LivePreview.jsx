@@ -12,7 +12,9 @@ function LivePreview() {
     const [messages, setMessages] = useState([
         { sender: 'system', text: 'Welcome! Type your instructions to edit the preview.' }
     ]);
+    const [isDeployed, setIsDeployed] = useState(false);
     const location = useLocation();
+    const [isFullScreen, setIsFullScreen] = useState(false);
     const navigate = useNavigate();
     const initialPromptSent = useRef(false);
 
@@ -134,28 +136,30 @@ Ensure the changes are integrated seamlessly with the existing design and struct
 Only return the full, updated HTML code inside a single html code block. Do not include any other text or explanation.
 ${code}\n\nUser Request: "${messageToSend}"
 `;
-        const conversationHistory = messages
-            .filter(msg => msg.sender === 'user' || msg.sender === 'ai')
-            .map(msg => ({
-                role: msg.sender === 'user' ? 'user' : 'model',
-                content: msg.text
-            }));
+        const conversationHistory = messages.slice(1) // Exclude initial system message
+            .filter(msg => msg.sender === 'user' || (msg.sender === 'ai' && msg.text !== 'working on it...'))
+            .map(msg => {
+                return {
+                    role: msg.sender === 'user' ? 'user' : 'assistant',
+                    content: msg.text
+                };
+            });
 
-        const options = {
-            method: 'POST',
-            url: 'https://openrouter.ai/api/v1/chat/completions',
-            headers: {
-                'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            data: {
-                model: "google/gemini-flash-1.5",
-                messages: [...conversationHistory, { role: 'user', content: aiPrompt }]
-            }
-        };
-        
         try {
-            const response = await axios.request(options);
+            const response = await axios.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                {
+                    model: "x-ai/grok-code-fast-1",
+                    messages: [...conversationHistory, { role: 'user', content: aiPrompt }],
+                },
+                {
+                headers: {
+                    'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
+                    'HTTP-Referer': `${window.location.origin}`,
+                    'X-Title': 'Makable',
+                    'Content-Type': 'application/json'
+                }}
+            );
             const aiResponseText = response.data?.choices[0]?.message?.content;
 
             if (!response.data || !aiResponseText) {
@@ -195,17 +199,40 @@ ${code}\n\nUser Request: "${messageToSend}"
         }
     }, [location.state, handleSend]);
 
+    const handleDeploy = () => {
+        console.log("Deploying code...");
+        // Future deployment logic will go here.
+    };
+
+    const toggleFullScreen = () => {
+        setIsFullScreen(!isFullScreen);
+    };
+
     return (
         <div style={{ display: 'flex', height: '100vh', background: '#1a1a1a', color: '#e0e0e0' }}>
-            <div style={{ flex: 2, borderRight: '1px solid #333', padding: '2rem', overflow: 'auto', position: 'relative' }}>
+            <div style={isFullScreen ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, padding: '1rem', background: '#1a1a1a' } : { flex: 2, borderRight: '1px solid #333', padding: '2rem', overflow: 'auto', position: 'relative' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                     <button
                         onClick={() => navigate(-1)}
-                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', background: '#3a3a3a', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}
+                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', background: '#3a3a3a', color: '#fff', border: '1px solid #444', cursor: 'pointer', display: isFullScreen ? 'none' : 'inline-block' }}
                     >
                         &larr; Back
                     </button>
                     <h3 style={{ color: '#e0e0e0', margin: 0 }}>Preview</h3>
+                    {code !== initialCode && (
+                        <button
+                            onClick={handleDeploy}
+                            style={{ marginLeft: 'auto', padding: '0.5rem 1rem', borderRadius: '4px', background: '#28a745', color: '#fff', border: 'none', cursor: 'pointer', display: isFullScreen ? 'none' : 'inline-block' }}
+                        >
+                            Deploy
+                        </button>
+                    )}
+                    <button
+                        onClick={toggleFullScreen}
+                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', background: '#0078d4', color: '#fff', border: 'none', cursor: 'pointer', marginLeft: isFullScreen ? 'auto' : '0.5rem' }}
+                    >
+                        {isFullScreen ? 'Exit Full Screen' : 'Full Screen'}
+                    </button>
                 </div>
                 <iframe
                     style={{
@@ -221,7 +248,7 @@ ${code}\n\nUser Request: "${messageToSend}"
                     sandbox="allow-scripts" // Be cautious with this if the AI can generate scripts
                 />
             </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '2rem' }}>
+            <div style={{ flex: 1, display: isFullScreen ? 'none' : 'flex', flexDirection: 'column', padding: '2rem' }}>
                 <h3 style={{ color: '#e0e0e0' }}>Chat Box</h3>
                 <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem', background: '#2a2a2a', borderRadius: '8px', padding: '1rem', border: '1px solid #333' }}>
                     {messages.map((msg, idx) => (
