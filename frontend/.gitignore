@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# c:\Users\rosha\Desktop\makable\backend\.gitignore
+node_modules
+.env

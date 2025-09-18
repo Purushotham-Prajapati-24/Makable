@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate, } from 'react-router-dom';
 import axios from 'axios';
 
-const initialCode = `<div style="padding: 2rem; text-align: center;">
+const initialCode = `<div style="padding: 2rem; font-family:gilroy; text-align: center;">
     <h2>Hello, No-Code AI Platform!</h2>
     <p>Edit this code using the chat box below.</p>
 </div>`;
@@ -199,9 +199,33 @@ ${code}\n\nUser Request: "${messageToSend}"
         }
     }, [location.state, handleSend]);
 
-    const handleDeploy = () => {
-        console.log("Deploying code...");
-        // Future deployment logic will go here.
+    const handleDeploy = async () => {
+        const loadingMessage = { sender: 'ai', text: 'Deploying your website to Vercel...', id: Date.now() };
+        setMessages(prev => [...prev, loadingMessage]);
+
+        try {
+            // We'll assume a backend endpoint exists at /api/deploy
+            const response = await axios.post('/api/deploy', {
+                htmlContent: code,
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const deploymentUrl = response.data.url;
+            const successMessage = (
+                <span>
+                    Your website is live! You can view it here: <a href={deploymentUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#90caf9', textDecoration: 'underline' }}>{deploymentUrl}</a>
+                </span>
+            );
+            setMessages(prev => prev.map(msg => msg.id === loadingMessage.id ? { ...msg, text: successMessage } : msg));
+            setIsDeployed(true);
+
+        } catch (error) {
+            console.error("Deployment Error:", error.response || error);
+            setMessages(prev => prev.map(msg => msg.id === loadingMessage.id ? { ...msg, text: `Deployment failed: ${error.response?.data?.error || error.message}` } : msg));
+        }
     };
 
     const toggleFullScreen = () => {
@@ -219,7 +243,7 @@ ${code}\n\nUser Request: "${messageToSend}"
                         &larr; Back
                     </button>
                     <h3 style={{ color: '#e0e0e0', margin: 0 }}>Preview</h3>
-                    {code !== initialCode && (
+                    {code !== initialCode && !isDeployed && (
                         <button
                             onClick={handleDeploy}
                             style={{ marginLeft: 'auto', padding: '0.5rem 1rem', borderRadius: '4px', background: '#28a745', color: '#fff', border: 'none', cursor: 'pointer', display: isFullScreen ? 'none' : 'inline-block' }}
