@@ -14,6 +14,7 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
+        port:'f0e50f377925.ngrok-free.app',
       }
     }
   }
