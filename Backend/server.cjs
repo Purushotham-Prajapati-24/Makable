@@ -59,12 +59,18 @@ app.post('/api/deploy', async (req, res) => {
     try {
         console.log('Starting deployment to Vercel...');
 
+        // Vercel expects file contents to be sent as base64 strings when using
+        // the deployments API. Encode the HTML content to base64 to avoid
+        // malformed/missing files on the deployment object.
         const vercelPayload = {
             name: 'makable-ai-deployment',
             files: [
                 {
                     file: 'index.html',
-                    data: htmlContent
+                    // encode the HTML so Vercel receives it correctly
+                    data: Buffer.from(htmlContent).toString('base64'),
+                    // indicate encoding to make intent explicit (helpful for debugging)
+                    encoding: 'base64'
                 }
             ],
             projectSettings: {
@@ -87,8 +93,10 @@ app.post('/api/deploy', async (req, res) => {
         res.status(200).json({ url: deploymentUrl });
 
     } catch (error) {
+        // Surface the API error if available so the frontend can show a helpful message.
         console.error('Vercel API Error:', error.response ? error.response.data : error.message);
-        res.status(500).json({ error: 'Failed to deploy to Vercel.' });
+        const errorBody = error.response?.data || { message: error.message };
+        res.status(error.response?.status || 500).json({ error: 'Failed to deploy to Vercel.', details: errorBody });
     }
 });
 
